@@ -1,0 +1,25 @@
+# Render Blueprint — https://render.com/docs/blueprint-spec
+# Step-by-step: docs/deploying-on-render.md
+#
+# Python/Django is not paired with Node on Render’s native runtimes, so we use
+# Docker (Node for Sass / govuk-frontend, then Gunicorn). Sessions are in-memory
+# (fine for a public example; not multi-instance durable).
+
+services:
+  - type: web
+    name: govuk-frontend-example-python
+    runtime: docker
+    plan: free
+    region: oregon
+    branch: main
+    healthCheckPath: /health
+    dockerfilePath: ./Dockerfile
+    envVars:
+      - key: DEMOS_ENABLED
+        value: "true"
+      - key: DEBUG
+        value: "false"
+      - key: ALLOWED_HOSTS
+        value: ".onrender.com,localhost,127.0.0.1"
+      - key: SECRET_KEY
+        generateValue: true
