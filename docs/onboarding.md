@@ -4,11 +4,11 @@ Human-oriented map of this repository. Coding agents should treat [`AGENTS.md`](
 
 ## What this repo is
 
-A **base template** for **GDS-compliant** frontends: backend languages (e.g. TypeScript, Go, Python) generate HTML; **GOV.UK Frontend** is the only UI library; **no frontend frameworks** for UI. Exact **HTML parity** against official Frontend fixtures. See [project-purpose.md](project-purpose.md).
+A **GDS-compliant** frontend example: **Python / Django** generate HTML; **GOV.UK Frontend** is the only UI library; **no frontend frameworks** for UI. Exact **HTML parity** against official Frontend fixtures. See [project-purpose.md](project-purpose.md).
 
-**Implementation language and templating stack are TBD.** Until confirmed, do not invent wrapper project paths or framework idioms beyond [tech-stack.md](tech-stack.md). Once chosen, organise the wrapper using that language’s **current best practices**.
+**Implementation language:** **Python 3.13 + Django 5.2** with **Django Templates** and native Python renderers in `govuk_components/rendering/`. See [tech-stack.md](tech-stack.md) for layout, tooling, and conventions.
 
-**GOV.UK Frontend is Node + Nunjucks by default.** Install `govuk-frontend` from npm, treat Nunjucks `template.njk` / `fixtures.json` as the HTML contract, and keep Node scripts for refreshing and verifying fixtures — even if the wrapper is another language.
+**GOV.UK Frontend** is installed from npm for CSS, JavaScript, fonts, and official `fixtures.json`. Node is used for Sass, baseline checks, and optional Nunjucks freshness — **not** for production HTML rendering in this line.
 
 **Official guidance:** search the URLs in [guidance-sources.md](guidance-sources.md).
 
@@ -16,7 +16,7 @@ A **base template** for **GDS-compliant** frontends: backend languages (e.g. Typ
 
 **Documentation:** every lasting change is documented for **humans and agents** ([documentation-structure.md](documentation-structure.md)).
 
-**HTML:** prefer **Nunjucks macros** from `govuk-frontend`; set up official fixtures for extensive **100% parity** tests of backend output. Do not copy-paste component HTML from each release as the long-term approach. Before Frontend upgrades, always read https://github.com/alphagov/govuk-frontend/releases/latest.
+**HTML:** Python renderers track Frontend macros/`template.njk`; official fixtures drive **100% parity** tests of backend output. Do not copy-paste component HTML from each release as the long-term approach. Before Frontend upgrades, always read https://github.com/alphagov/govuk-frontend/releases/latest.
 
 ## Priorities
 
@@ -29,35 +29,56 @@ See [priorities.md](priorities.md). Short version: frontend web performance → 
 | **Component** | Design System building block (button, text input, …)                     | Library wrapper that renders exact Frontend HTML | **Yes** — official `fixtures.json`                                      |
 | **Pattern**   | Guidance for a journey or page composition (addresses, check answers, …) | Compose shipped components into pages            | **No** — follow Design System guidance; no invented pattern HTML suites |
 
-## Repo map (intended)
-
-Exact paths follow the chosen language’s conventions — record them in [tech-stack.md](tech-stack.md). Conceptually expect:
+## Repo map
 
 ```text
-AGENTS.md                 # Slim agent playbook
-docs/                     # All documentation (this folder)
-baseline/                 # Shared performance + OWASP header contract (sync to language lines)
-styles/                   # Sass entry + govuk-overrides (compiles to dist/stylesheets/)
-scripts/                  # Node build helpers (styles, future upgrade tooling)
-<src>/                    # App + component library (layout per language best practice)
-  …/govuk/…               # One unit per component + fixtures.json
-  …/layouts/…             # Page template / chrome
-  …/previews/…            # Dev-only parity browser per component
-  …/fixtures/…            # Dev-only raw HTML fragment endpoints
-tests/                    # Structural, parity (wrapper language), Nunjucks suite (Node)
-scripts/ or tasks/        # Frontend upgrade automation (often Node + wrapper tooling)
+AGENTS.md
+config/                   # Django settings, baseline middleware, WSGI/ASGI
+govuk_components/         # Native renderers + Django template tags
+service/                  # Example rod licence journey
+previews/                 # Component catalogue (when DEMOS_ENABLED)
+tests/                    # pytest, fixture parity, journey coverage
+baseline/                 # Shared performance + OWASP header contract
+styles/                   # Sass → dist/stylesheets/application.css
+docs/
 ```
 
-## Run modes (intended)
+Detail: [tech-stack.md](tech-stack.md).
+
+## Local development
+
+Install dependencies and run the example service:
+
+```sh
+# Once: install uv — https://docs.astral.sh/uv/getting-started/installation/
+curl -LsSf https://astral.sh/uv/install.sh | sh
+source "$HOME/.local/bin/env"
+
+npm ci
+uv sync --all-groups
+npm start
+```
+
+Open <http://127.0.0.1:8000>. Component previews: `/components/` when demos are enabled (default in `DEBUG`).
+
+Quality checks:
+
+```sh
+uv run ruff check .
+uv run mypy
+uv run pytest
+npm test
+npm run verify:docs
+```
+
+## Run modes
 
 | Mode    | Purpose                                                                                   |
 | ------- | ----------------------------------------------------------------------------------------- |
-| Preview | Local server for component previews and pattern demos                                     |
-| Test    | Unit/parity tests (wrapper) + Nunjucks fixture verification (Node)                        |
-| Verify  | Config check + fixtures + full test suite (CI equivalent)                                 |
+| Preview | `npm start` — journey + optional `/components/` catalogue                                 |
+| Test    | `uv run pytest` (parity, journey, 100% coverage) + `npm test` (baseline, Sass)            |
+| Verify  | CI: Ruff, mypy, pytest, Node tests, `npm run verify:docs`                                 |
 | Upgrade | Mechanical Frontend bump — see [upgrading-govuk-frontend.md](upgrading-govuk-frontend.md) |
-
-Command names for the _wrapper_ are stack-specific — document them in [tech-stack.md](tech-stack.md). Expect **Node**/npm for `govuk-frontend` install and the Nunjucks suite regardless.
 
 ## Testing mindset
 
@@ -82,14 +103,14 @@ Details: [testing-components.md](testing-components.md).
 
 More pitfalls: [creating-components.md](creating-components.md).
 
-## Consistency tooling (today)
+## Consistency tooling
 
-While the wrapper language is TBD, Node tooling keeps docs and shared config consistent:
+Node tooling keeps docs, Sass, and baseline checks consistent alongside Python:
 
 ```sh
-npm install
+npm ci
 npm run build:styles # Sass → dist/stylesheets/application.css
-npm test             # baseline headers + Sass pipeline (100% coverage)
+npm test             # baseline headers + Sass pipeline
 npm run verify:docs  # Prettier + markdownlint
 npm run verify       # docs + build:styles + tests
 ```

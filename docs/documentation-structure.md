@@ -51,7 +51,7 @@ Applies to this template’s shared Node tooling **and** to language-line / serv
 
 1. Until [tech-stack.md](tech-stack.md) names a wrapper language: stay language-agnostic for app structure; still use current Node/ESM practice for `baseline/`, Sass scripts, and fixture tooling.
 2. After a language is recorded: follow **that language’s latest** layout, typing, module, test, packaging, and CI norms for **all** new feature work and refactors.
-3. Prefer official or widely accepted current guides over blog posts that predate the pin (for example current TypeScript / Go / Python docs for the major version you record).
+3. Prefer official or widely accepted current guides over blog posts that predate the pin (for example current Python and Django docs for the major versions recorded in [tech-stack.md](tech-stack.md)).
 4. Do not adopt a “best practice” that conflicts with Frontend macros, fixture parity, the performance/security baseline, or the Sass cascade.
 5. When best practices change upstream, update tech-stack notes and code in focused commits — documentation and implementation together.
 

@@ -5,12 +5,12 @@ alwaysApply: true
 
 # Template consistency
 
-- This repo is a **base template**: backend HTML + **GOV.UK Frontend** only. **No** React/Vue/Angular/Svelte for UI.
-- Track Frontend macros/`template.njk` for component HTML (Nunjucks in-process only when Node-adjacent; native HTML elsewhere — never shell out to Node just to render). Compare **backend-rendered HTML** to official fixtures for every fixture (primary gate); Nunjucks-vs-fixture is freshness only. See [`docs/testing-components.md`](docs/testing-components.md).
+- This repo is the **Python / Django** GOV.UK Frontend example: backend HTML + **GOV.UK Frontend** only. **No** React/Vue/Angular/Svelte for UI.
+- Track Frontend macros/`template.njk` via native Python renderers — never shell out to Node just to render. Compare **Python-rendered HTML** to official fixtures for every fixture (primary gate); Nunjucks-vs-fixture is freshness only. See [`docs/testing-components.md`](docs/testing-components.md).
 - Priorities: frontend web performance → frontend security → reduced maintenance → accessibility → inclusive design.
 - Keep [`AGENTS.md`](AGENTS.md) slim; put detail in [`docs/`](docs/README.md). Dual audience: see [`docs/documentation-structure.md`](docs/documentation-structure.md).
 - Every feature or prompt-driven change must update dual-audience docs (humans + agents) in the right place — same change set as the code.
-- Do not invent stack paths until [`docs/tech-stack.md`](docs/tech-stack.md) records the language; then follow that language’s **latest** best practices for all new code.
+- Follow **Python** and **Django** latest best practices recorded in [`docs/tech-stack.md`](docs/tech-stack.md) for all new code.
 - Before upgrading Frontend: read https://github.com/alphagov/govuk-frontend/releases/latest then [`docs/upgrading-govuk-frontend.md`](docs/upgrading-govuk-frontend.md).
 - Respect EditorConfig / Prettier / markdownlint; run `npm run verify:docs` after doc changes.
 - 100% coverage (functions, branches, statements) for application code when it exists; never edit fixture `html` to pass tests.

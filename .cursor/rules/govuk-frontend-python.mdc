@@ -1,0 +1,368 @@
+---
+description: Build a GOV.UK Frontend compatible server-rendered implementation using Python and Django
+alwaysApply: true
+---
+
+# Project goal
+
+Build a server-rendered UK government service using Python and Django that produces HTML compatible with GOV.UK Frontend.
+
+The project demonstrates that GOV.UK Frontend does not depend on Nunjucks, Node.js, or a client-side frontend framework.
+
+Official GOV.UK Frontend fixtures belonging to the installed version define rendering correctness.
+
+The target is 100% fixture parity for every implemented component.
+
+## Architecture
+
+```text
+GOV.UK Frontend fixture
+        |
+        v
+Python component options
+        |
+        v
+Django template tag / inclusion tag
+        |
+        v
+Django Template
+        |
+        v
+Server-rendered HTML
+        |
+        v
+DOM comparison
+        |
+        v
+Expected GOV.UK HTML
+```
+
+## Technology
+
+Use:
+
+- current supported Python
+- Django
+- Django Templates
+- pytest
+- pytest-django
+- BeautifulSoup
+- html5lib
+- PyYAML
+- mypy
+- Ruff
+
+Study existing projects such as `govuk-frontend-django` for established ecosystem approaches.
+
+Do not blindly copy another implementation.
+
+The official GOV.UK Frontend fixtures remain authoritative.
+
+## GOV.UK Frontend
+
+Pin an explicit GOV.UK Frontend version.
+
+Use official GOV.UK Frontend:
+
+- CSS
+- JavaScript
+- fonts
+- images
+- assets
+
+Do not recreate these.
+
+Use official fixture data and expected HTML from the same version.
+
+## Understanding components
+
+Before implementing a component:
+
+1. inspect all fixtures for the component
+2. inspect expected HTML
+3. inspect upstream Nunjucks where useful
+4. understand all options and interactions
+5. design an idiomatic Django API
+6. implement the component
+7. execute the complete applicable fixture suite
+
+Do not design the API around only the first or simplest fixture.
+
+## Django architecture
+
+Implement GOV.UK components as a reusable Django application.
+
+Prefer native Django composition mechanisms.
+
+Use custom template tags and inclusion tags where appropriate.
+
+Suggested structure:
+
+```text
+govuk_components/
+  components/
+    button.py
+    input.py
+    radios.py
+  templatetags/
+    govuk_components.py
+  templates/
+    govuk/
+      components/
+        button.html
+        input.html
+        radios.html
+  rendering/
+  fixtures/
+
+tests/
+  components/
+  fixtures/
+  rendering/
+```
+
+Use dataclasses, TypedDicts, enums, or normal typed classes where they improve clarity.
+
+Use type hints throughout application code.
+
+Do not create elaborate class hierarchies merely to imitate another ecosystem.
+
+## Component API
+
+Component APIs should closely represent GOV.UK Frontend options while feeling natural to Django developers.
+
+For example:
+
+```django
+{% load govuk_components %}
+
+{% govuk_button button %}
+```
+
+with a typed Python representation of the options.
+
+Keep HTTP views separate from component rendering.
+
+Components must be testable without making an HTTP request.
+
+## Templates
+
+Use Django Templates.
+
+Do not use Nunjucks.
+
+Do not invoke Node.js to generate component HTML.
+
+Keep template logic straightforward.
+
+Move complicated transformation logic into Python.
+
+Do not introduce extra markup for template convenience.
+
+## Escaping and trusted HTML
+
+Use Django automatic escaping.
+
+GOV.UK `text` properties must be escaped.
+
+GOV.UK `html` properties require explicit trusted HTML handling.
+
+Use `mark_safe` only inside tightly controlled APIs where content has explicitly been classified as trusted.
+
+Never apply `mark_safe` to arbitrary user input.
+
+Do not disable autoescaping globally.
+
+Do not weaken escaping to satisfy fixtures without understanding the expected behaviour.
+
+## Attributes
+
+Support arbitrary GOV.UK component attributes where defined.
+
+Ensure values are escaped appropriately.
+
+Preserve:
+
+- IDs
+- names
+- values
+- classes
+- ARIA
+- data attributes
+- roles
+- boolean attributes
+- form semantics
+
+## Fixture testing
+
+Use PyYAML to load fixtures.
+
+Tests should be parameterised using pytest.
+
+For each fixture:
+
+1. load upstream fixture data
+2. map options into the local representation
+3. render using Django Templates
+4. obtain expected GOV.UK HTML
+5. parse actual HTML
+6. parse expected HTML
+7. compare meaningful DOM structure
+8. provide a useful failure diff
+
+A new fixture should normally run automatically without another manually written test.
+
+## HTML parsing and comparison
+
+Use BeautifulSoup with html5lib or another standards-aware HTML parser.
+
+Do not rely solely on raw string equality.
+
+Normalise only genuinely irrelevant serialisation differences.
+
+Never normalise away differences involving:
+
+- elements
+- ordering
+- text
+- classes
+- IDs
+- attributes
+- values
+- ARIA
+- data attributes
+- form semantics
+- accessibility relationships
+
+Document normalisation.
+
+Test the comparator.
+
+Assume the component is incorrect before changing comparator behaviour.
+
+## Testing
+
+Test:
+
+- every supported fixture
+- text escaping
+- trusted HTML
+- classes
+- arbitrary attributes
+- IDs
+- ARIA
+- errors
+- hints
+- nested content
+- checked/selected states
+- complex form components
+
+Use pytest and pytest-django.
+
+## Forbidden shortcuts
+
+Never:
+
+- modify upstream fixtures
+- modify expected HTML
+- special-case fixture names
+- hard-code expected output
+- copy fixture HTML directly into templates
+- weaken DOM comparison to hide differences
+- invoke Nunjucks at runtime
+- invoke Node.js to render production HTML
+- call another implementation at runtime
+- introduce React, Vue, Angular, Svelte, or another SPA framework for core rendering
+- replace GOV.UK Frontend CSS or JavaScript unnecessarily
+
+Unsupported fixtures should remain visible as failures or explicitly documented exclusions.
+
+## Progressive enhancement
+
+Server-render the complete core experience.
+
+Use official GOV.UK Frontend JavaScript for progressive enhancement.
+
+Do not make JavaScript responsible for constructing essential initial component markup.
+
+## Dependencies
+
+Use normal Python dependency management for the project.
+
+Pin dependencies reproducibly.
+
+Keep dependencies minimal.
+
+Use established libraries.
+
+Run dependency/security tooling where appropriate.
+
+## Quality
+
+Use:
+
+```text
+ruff
+mypy
+pytest
+pytest-django
+```
+
+Prefer:
+
+- small functions
+- explicit types
+- dataclasses where useful
+- standard Django conventions
+- simple templates
+- composition
+
+Avoid:
+
+- excessive metaprogramming
+- HTML string concatenation
+- indiscriminate `mark_safe`
+- unnecessary JavaScript
+- TypeScript-style architecture copied into Python
+
+## CI
+
+CI must:
+
+1. install reproducible dependencies
+2. run Ruff
+3. run mypy
+4. run pytest
+5. run the complete fixture parity suite
+
+Parity failures fail CI.
+
+## GOV.UK Frontend upgrades
+
+When upgrading GOV.UK Frontend:
+
+1. update the pinned version
+2. update the fixture set
+3. run all existing tests
+4. inspect parity failures
+5. modify Django rendering where upstream behaviour changed
+6. rerun everything
+
+Do not modify fixtures to accommodate the old implementation.
+
+## Definition of done
+
+A component is complete when:
+
+- Django server-renders it
+- no Nunjucks runtime rendering exists
+- no Node.js runtime rendering exists
+- official GOV.UK assets are used
+- every supported fixture passes
+- escaping is tested
+- trusted HTML is tested
+- accessibility markup matches
+- no fixture-specific hacks exist
+- CI passes
+
+Fixture parity defines compatibility.

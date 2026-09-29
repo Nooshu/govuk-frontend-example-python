@@ -20,7 +20,10 @@ How we keep docs dual-purpose: [documentation-structure.md](documentation-struct
 | [priorities.md](priorities.md)                           | Ordered priorities                               |
 | [frontend-performance.md](frontend-performance.md)       | Caching, compression, asset placement, budgets   |
 | [frontend-security.md](frontend-security.md)             | OWASP response headers, CSP, cookies             |
-| [tech-stack.md](tech-stack.md)                           | Wrapper language (TBD) + Frontend Node/Nunjucks  |
+| [tech-stack.md](tech-stack.md)                           | Python/Django stack + Frontend Node/Nunjucks     |
+| [example-service.md](example-service.md)                 | Rod licence journey, pages, limits               |
+| [deploying-on-render.md](deploying-on-render.md)         | Public demo on Render (Docker + Gunicorn)        |
+| [preview-server.md](preview-server.md)                   | Local Django preview / catalogue                 |
 | [guidance-sources.md](guidance-sources.md)               | Official GDS / Service Manual / Frontend URLs    |
 | [documentation-structure.md](documentation-structure.md) | Dual-audience docs + language practice rules     |
 | [CONTRIBUTING.md](../CONTRIBUTING.md)                    | How to contribute, local checks, PR expectations |
