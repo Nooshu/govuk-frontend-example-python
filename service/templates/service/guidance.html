@@ -1,0 +1,10 @@
+{% extends "govuk/layout.html" %}
+{% load govuk %}
+{% block content %}
+<div class="govuk-grid-row">
+  <div class="govuk-grid-column-full">
+    <h1 class="govuk-heading-l">{{ heading }}</h1>
+    {% govuk "tabs" tabs %}
+  </div>
+</div>
+{% endblock %}

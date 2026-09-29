@@ -1,0 +1,11 @@
+{% extends "govuk/layout.html" %}
+{% load govuk %}
+{% block content %}
+{% include "service/_form_open.html" %}
+{% if currentFile %}
+      <p class="govuk-body">Current file: {{ currentFile }}</p>
+{% endif %}
+      {% govuk "file-upload" upload %}
+      {% govuk "button" continue_button %}
+{% include "service/_form_close.html" %}
+{% endblock %}

@@ -1,0 +1,15 @@
+{% extends "govuk/layout.html" %}
+{% load govuk %}
+{% block content %}
+{% if notice %}
+<div class="govuk-grid-row">
+  <div class="govuk-grid-column-two-thirds">
+    {% govuk "notification-banner" notice %}
+  </div>
+</div>
+{% endif %}
+{% include "service/_form_open.html" %}
+      {% govuk "radios" radios %}
+      {% govuk "button" save_button %}
+{% include "service/_form_close.html" %}
+{% endblock %}

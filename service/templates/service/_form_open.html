@@ -1,0 +1,11 @@
+{% load govuk %}
+<div class="govuk-grid-row">
+  <div class="govuk-grid-column-two-thirds">
+{% if error_summary %}
+    {% govuk "error-summary" error_summary %}
+{% endif %}
+    <form method="post" novalidate{% if enctype %} enctype="{{ enctype }}"{% endif %}>
+      {% csrf_token %}
+{% if return_to %}
+      <input type="hidden" name="returnTo" value="{{ return_to }}">
+{% endif %}
