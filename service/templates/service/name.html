@@ -1,0 +1,10 @@
+{% extends "govuk/layout.html" %}
+{% load govuk %}
+{% block content %}
+{% include "service/_form_open.html" %}
+      <h1 class="govuk-heading-l">{{ heading }}</h1>
+      {% govuk "input" firstName %}
+      {% govuk "input" lastName %}
+      {% govuk "button" continue_button %}
+{% include "service/_form_close.html" %}
+{% endblock %}

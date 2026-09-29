@@ -1,0 +1,26 @@
+{% extends "govuk/layout.html" %}
+{% load govuk %}
+{% block content %}
+<div class="govuk-grid-row">
+  <div class="govuk-grid-column-two-thirds">
+    {% govuk "notification-banner" notification %}
+    <h1 class="govuk-heading-xl">{{ heading }}</h1>
+    <p class="govuk-body-l">{{ lede }}</p>
+    {% govuk "button" start_button %}
+    <p class="govuk-body">{{ timing }}</p>
+    {% govuk "warning-text" warning %}
+    {% govuk "inset-text" inset %}
+    {% govuk "details" details %}
+{% if demos_enabled %}
+    <h2 class="govuk-heading-m">{% if html_lang == "cy" %}Rhagolygon datblygwyr{% else %}Developer previews{% endif %}</h2>
+    <p class="govuk-body">
+{% if html_lang == "cy" %}
+      <a class="govuk-link" href="/components">Rhagolwg o gydrannau GOV.UK</a> — tudalen ar wahân ar gyfer pob cydran, wedi’i rendro gan y llyfrgell Python.
+{% else %}
+      <a class="govuk-link" href="/components">Preview GOV.UK components</a> — a separate page for each component, rendered by this service’s Python library.
+{% endif %}
+    </p>
+{% endif %}
+  </div>
+</div>
+{% endblock %}

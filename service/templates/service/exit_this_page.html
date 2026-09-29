@@ -1,0 +1,12 @@
+{% extends "govuk/layout.html" %}
+{% load govuk %}
+{% block content %}
+<div class="govuk-grid-row">
+  <div class="govuk-grid-column-two-thirds">
+    <h1 class="govuk-heading-l">{{ heading }}</h1>
+    {% govuk "warning-text" warning %}
+    {% govuk "inset-text" inset %}
+    <p class="govuk-body">The button is the first thing on the page, which matches the component guidance.</p>
+  </div>
+</div>
+{% endblock %}

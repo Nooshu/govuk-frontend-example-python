@@ -1,0 +1,22 @@
+{% extends "govuk/layout.html" %}
+{% block content %}
+<div class="govuk-grid-row">
+  <div class="govuk-grid-column-two-thirds">
+    <h1 class="govuk-heading-l">{{ heading }}</h1>
+    <p class="govuk-body">This Django example shows how to build a GOV.UK service where the Python server generates every page. It is not a real licensing service.</p>
+    <p class="govuk-body">Component HTML comes from GOV.UK Frontend {{ frontend_version }}, and tests compare it with every official fixture in that release.</p>
+    <h2 class="govuk-heading-m">In this example</h2>
+    <ul class="govuk-list govuk-list--bullet">
+      <li><a class="govuk-link" href="/">Start page</a></li>
+      <li><a class="govuk-link" href="/task-list">Task list</a></li>
+      <li><a class="govuk-link" href="/fees">Licence fees</a></li>
+      <li><a class="govuk-link" href="/help">Help</a></li>
+      <li><a class="govuk-link" href="/guidance">Guidance</a></li>
+{% if demos_enabled %}
+      <li><a class="govuk-link" href="/components">Component catalogue</a></li>
+      <li><a class="govuk-link" href="/examples">Example pages</a></li>
+{% endif %}
+    </ul>
+  </div>
+</div>
+{% endblock %}
