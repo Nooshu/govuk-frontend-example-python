@@ -71,3 +71,11 @@ HTTPS terminates at Render. The app treats `X-Forwarded-Proto: https` as secure.
 ## Free plan behaviour
 
 The service may **spin down** after idle time; the first request after idle can take ~30–60s (cold start). Sessions are in-memory LocMemCache (not durable across instances or restarts).
+
+## Troubleshooting
+
+### `sh: 1: gunicorn: not found`
+
+The runtime image must run the Gunicorn console script from `/app/.venv/bin`. The Python build stage installs into **`/app/.venv`** (same path as the final stage) so shebangs and `pyvenv.cfg` stay valid after `COPY`. Do not install the venv under a different build `WORKDIR` (for example `/build`) and then copy it to `/app` — Linux then reports the entry point as “not found” because the interpreter path is broken.
+
+Confirm the Dockerfile `CMD` uses `/app/.venv/bin/gunicorn` (or `PATH` with that `bin` directory first).
