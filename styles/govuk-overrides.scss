@@ -7,12 +7,6 @@
 // - Prefer GOV.UK Frontend component options and Design System patterns first.
 // - Keep selectors on govuk-* classes or app-prefixed wrappers composed with them.
 // - Do not restyle focus (yellow focus ring) or invent parallel UI chrome.
-//
-// Example (specificity via a composed class, not !important):
-//
-// .govuk-button.app-button--confirm {
-//   // Service-specific adjustment using Frontend tokens where possible
-// }
 
 @use 'pkg:govuk-frontend/base' as *;
 
@@ -20,4 +14,23 @@
 // Service overrides go below. Prefer specificity over !important.
 :root {
   --app-stylesheet-layer: govuk-overrides;
+}
+
+// Fixture preview chrome on /components/:name — wraps Django-rendered HTML so it is
+// visually distinct from page chrome (parity banner, version list).
+.app-component-preview {
+  margin-top: govuk-spacing(6);
+  margin-bottom: govuk-spacing(6);
+}
+
+.app-component-preview__frame {
+  border: $govuk-border-width-form-element dotted $govuk-border-colour;
+  padding: govuk-spacing(4);
+}
+
+// Site-wide demo warning — same notification-banner chrome as default, but yellow
+// instead of brand blue (specificity via composed class; no !important).
+.govuk-notification-banner.app-demo-banner {
+  --_govuk-notification-banner-colour: #{govuk-colour('yellow')};
+  --_govuk-notification-banner-title-text-colour: #{govuk-colour('black')};
 }

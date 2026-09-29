@@ -1,0 +1,54 @@
+{% load govuk %}
+<!DOCTYPE html>
+<html lang="{{ html_lang|default:'en' }}" class="govuk-template">
+  <head>
+    <meta charset="utf-8">
+    <title>{% block title %}{{ page_title }}{% endblock %}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#1d70b8">
+    <link rel="stylesheet" href="{{ stylesheet_href }}">
+    <meta name="robots" content="noindex, nofollow">
+    <link rel="icon" sizes="48x48" href="/assets/images/favicon.ico">
+    <link rel="icon" sizes="any" href="/assets/images/favicon.svg" type="image/svg+xml">
+    <link rel="mask-icon" href="/assets/images/govuk-icon-mask.svg" color="#1d70b8">
+    <link rel="apple-touch-icon" href="/assets/images/govuk-icon-180.png">
+    <link rel="manifest" href="/assets/manifest.json">
+  </head>
+  <body class="govuk-template__body">
+    <script>{{ js_enabled_snippet|safe }}</script>
+{% if exit_this_page %}
+    {% govuk "exit-this-page" exit_this_page %}
+{% endif %}
+    {% govuk "skip-link" skip_link %}
+{% if cookie_banner %}
+    <form method="post" action="/cookie-choices" novalidate>
+      {% csrf_token %}
+      <input type="hidden" name="returnPath" value="{{ return_path }}">
+      {% govuk "cookie-banner" cookie_banner %}
+    </form>
+{% endif %}
+    <header class="govuk-template__header">
+      {% govuk "header" header %}
+      {% govuk "service-navigation" service_navigation %}
+    </header>
+    <div class="govuk-width-container">
+      {% govuk "phase-banner" phase_banner %}
+{% if back_link %}
+      {% govuk "back-link" back_link %}
+{% elif breadcrumbs %}
+      {% govuk "breadcrumbs" breadcrumbs %}
+{% endif %}
+      <main class="govuk-main-wrapper{% if main_classes %} {{ main_classes }}{% endif %}" id="main-content">
+        {% govuk "notification-banner" demo_banner %}
+        {% block content %}{% endblock %}
+      </main>
+    </div>
+    <footer class="govuk-template__footer">
+{% if show_feedback %}
+      {% govuk "feedback" feedback %}
+{% endif %}
+      {% govuk "footer" footer %}
+    </footer>
+    <script type="module" src="{{ app_module_href }}"></script>
+  </body>
+</html>
