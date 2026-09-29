@@ -1,0 +1,84 @@
+[project]
+name = "govuk-frontend-example-python"
+version = "0.1.0"
+description = "GOV.UK Frontend example service in Python/Django with fixture HTML parity"
+readme = "README.md"
+authors = [{ name = "Matt Hobbs", email = "matt@nooshu.com" }]
+requires-python = ">=3.13"
+dependencies = [
+  "django~=5.2",
+  "gunicorn>=23.0",
+  "brotli>=1.1",
+]
+
+[dependency-groups]
+dev = [
+  "pytest>=8.3",
+  "pytest-django>=4.9",
+  "pytest-cov>=6.0",
+  "ruff>=0.9",
+  "mypy>=1.14",
+  "django-stubs[compatible-mypy]>=5.1",
+  "beautifulsoup4>=4.12",
+  "html5lib>=1.1",
+  "types-html5lib>=1.1",
+]
+
+[project.scripts]
+govuk-example = "config.__main__:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["config", "govuk_components", "service", "previews"]
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "config.settings"
+pythonpath = ["."]
+testpaths = ["tests"]
+addopts = [
+  "--cov=govuk_components",
+  "--cov=service",
+  "--cov=previews",
+  "--cov=config",
+  "--cov-report=term-missing",
+  "--cov-fail-under=100",
+]
+
+[tool.coverage.run]
+branch = true
+source = ["govuk_components", "service", "previews", "config"]
+omit = ["*/migrations/*", "*/__main__.py"]
+
+[tool.coverage.report]
+fail_under = 100
+show_missing = true
+exclude_lines = [
+  "pragma: no cover",
+  "if TYPE_CHECKING:",
+  "raise NotImplementedError",
+]
+
+[tool.ruff]
+target-version = "py313"
+line-length = 100
+src = ["config", "govuk_components", "service", "previews", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.mypy]
+python_version = "3.13"
+strict = true
+plugins = ["mypy_django_plugin.main"]
+mypy_path = "."
+packages = ["config", "govuk_components", "service", "previews"]
+
+[tool.django-stubs]
+django_settings_module = "config.settings"
+
+[[tool.mypy.overrides]]
+module = "brotli"
+ignore_missing_imports = true

@@ -1,8 +1,8 @@
 {
-  "name": "govuk-frontend-example",
-  "version": "0.0.0",
+  "name": "govuk-frontend-example-python",
+  "version": "0.1.0",
   "private": true,
-  "description": "Base template for GDS-compliant frontends using GOV.UK Frontend (wrapper language TBD). Shared Sass pipeline, performance/security baseline, and Node tooling for docs hygiene.",
+  "description": "GOV.UK Frontend example in Python/Django with fixture HTML parity, Sass pipeline, and performance/security baseline.",
   "type": "module",
   "engines": {
     "node": ">=22"
@@ -13,8 +13,11 @@
     "format:check": "prettier --check .",
     "lint:md": "markdownlint-cli2",
     "test": "node --test --experimental-test-coverage --test-coverage-include='baseline/**/*.mjs' --test-coverage-include='scripts/build-styles.mjs' --test-coverage-lines=100 --test-coverage-branches=100 --test-coverage-functions=100",
+    "test:python": "uv run pytest",
     "verify:docs": "npm run format:check && npm run lint:md",
-    "verify": "npm run verify:docs && npm run build:styles && npm test"
+    "verify:python": "uv run ruff check . && uv run mypy && uv run pytest",
+    "verify": "npm run verify:docs && npm run build:styles && npm test && npm run verify:python",
+    "start": "npm run build:styles && node scripts/start-django.mjs"
   },
   "dependencies": {
     "govuk-frontend": "6.5.1"
