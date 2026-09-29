@@ -1,5 +1,6 @@
 node_modules/
 coverage/
+.coverage
 dist/
 build/
 out/
@@ -7,3 +8,7 @@ package-lock.json
 *.min.js
 *.min.css
 CHANGELOG.md
+**/*.html
+govuk_components/templates/
+service/templates/
+previews/templates/
