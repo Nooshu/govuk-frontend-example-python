@@ -102,8 +102,8 @@ GOVUK_COMPONENTS_DIR = GOVUK_FRONTEND_ROOT / "dist" / "govuk" / "components"
 DIST_DIR = BASE_DIR / "dist"
 BASELINE_POLICY_PATH = BASE_DIR / "baseline" / "policy.json"
 
-SERVICE_NAME = "Apply for a rod fishing licence"
-SERVICE_NAME_CY = "Gwneud cais am drwydded pysgota â gwialen"
+SERVICE_NAME = "Apply for a fishing rod licence"
+SERVICE_NAME_CY = "Gwneud cais am drwydded bysgota"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 

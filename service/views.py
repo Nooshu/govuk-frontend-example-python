@@ -1,4 +1,4 @@
-"""HTTP views for the rod fishing licence example service."""
+"""HTTP views for the fishing rod licence example service."""
 
 from __future__ import annotations
 
@@ -14,18 +14,12 @@ from django.views import View
 from django.views.generic import FormView, TemplateView
 
 from service import govuk_options
-from service.answers import summary_rows, task_sections
+from service.answers import summary_rows
 from service.application import (
-    STEP_ADDITIONAL_DETAILS,
-    STEP_ADDRESS,
-    STEP_CONTACT_PREFERENCE,
-    STEP_CREATE_A_PASSWORD,
     STEP_DATE_OF_BIRTH,
     STEP_EMAIL,
-    STEP_EVIDENCE,
     STEP_LICENCE_LENGTH,
     STEP_NAME,
-    STEP_START_MONTH,
     STEP_WHERE_YOU_WILL_FISH,
     Application,
     Step,
@@ -38,33 +32,14 @@ from service.application import (
 from service.assets import resolve_asset
 from service.chrome import crumbs, layout_context, safe_return_path
 from service.forms import (
-    AdditionalDetailsForm,
-    AddressForm,
-    ContactPreferenceForm,
     CookieSettingsForm,
     DateOfBirthForm,
     EmailForm,
-    EvidenceForm,
     LicenceLengthForm,
     NameForm,
-    PasswordForm,
-    StartMonthForm,
     WhereYouWillFishForm,
 )
-from service.save import (
-    AddressValues,
-    save_address,
-    save_contact,
-    save_date,
-    save_details,
-    save_email,
-    save_evidence,
-    save_licence,
-    save_month,
-    save_name,
-    save_password,
-    save_regions,
-)
+from service.save import save_country, save_date, save_email, save_licence, save_name
 from service.session import (
     CHOICE_ACCEPT,
     CHOICE_REJECT,
@@ -80,7 +55,7 @@ from service.session import (
     set_errors,
     set_notice,
 )
-from service.validate import FieldError, safe_filename
+from service.validate import FieldError
 
 if TYPE_CHECKING:
     _JourneyFormView = FormView[forms.Form]
@@ -187,7 +162,9 @@ class StartView(TemplateView):
         def pick(english: str, cymraeg: str) -> str:
             return cymraeg if welsh else english
 
-        heading = pick("Apply for a rod fishing licence", "Gwneud cais am drwydded bysgota")
+        heading = pick(
+            "Apply for a fishing rod licence", "Gwneud cais am drwydded bysgota"
+        )
         context = _layout(request, heading=heading, lang=lang, show_feedback=True)
         context.update(
             {
@@ -198,7 +175,7 @@ class StartView(TemplateView):
                 "timing": pick("Applying takes about 10 minutes.", "Mae’n cymryd tua 10 munud."),
                 "start_button": {
                     "text": pick("Start now", "Dechrau nawr"),
-                    "href": "/task-list",
+                    "href": "/licence-length",
                     "isStartButton": True,
                 },
                 "notification": {
@@ -225,14 +202,21 @@ class StartView(TemplateView):
                     "summaryText": pick("What you will need", "Beth fydd ei angen arnoch"),
                     "html": pick(
                         '<ul class="govuk-list govuk-list--bullet">'
-                        "<li>Your name</li><li>Your date of birth</li><li>Your address</li></ul>",
+                        "<li>How long you need the licence</li>"
+                        "<li>Your name</li>"
+                        "<li>Your date of birth</li>"
+                        "<li>The country where you will fish</li>"
+                        "<li>Your email address</li></ul>",
                         '<ul class="govuk-list govuk-list--bullet">'
-                        "<li>Eich enw</li><li>Eich dyddiad geni</li><li>Eich cyfeiriad</li></ul>",
+                        "<li>Pa mor hir mae angen y drwydded</li>"
+                        "<li>Eich enw</li>"
+                        "<li>Eich dyddiad geni</li>"
+                        "<li>Y wlad lle byddwch yn pysgota</li>"
+                        "<li>Eich cyfeiriad e-bost</li></ul>",
                     ),
                 },
             }
         )
-        # Mark details html as Safe via govuk_options pattern in template using mark — use Safe
         from govuk_components.rendering.params import Safe
 
         context["details"]["html"] = Safe(context["details"]["html"])
@@ -244,30 +228,6 @@ class NewApplicationView(View):
         clear_application(request)
         clear_errors(request)
         return redirect("/")
-
-
-class TaskListView(TemplateView):
-    template_name = "service/task_list.html"
-
-    def get(self, request: HttpRequest, *args: object, **kwargs: object) -> HttpResponse:
-        application = get_application(request)
-        context = _layout(
-            request,
-            heading="Your application",
-            back_link={"text": "Back", "href": "/"},
-            personal=True,
-        )
-        sections = task_sections(application)
-        context["sections"] = [
-            {
-                "heading": section.heading,
-                "id_prefix": section.id_prefix,
-                "items": section.items,
-                "task_list": {"idPrefix": section.id_prefix, "items": section.items},
-            }
-            for section in sections
-        ]
-        return render(request, self.template_name, context)
 
 
 class StepFormView(_JourneyFormView):
@@ -289,53 +249,24 @@ class StepFormView(_JourneyFormView):
         kwargs = super().get_form_kwargs()
         if self.request.method == "POST":
             kwargs["data"] = self._bind_post(self.request)
-        if self.form_class in {DateOfBirthForm, StartMonthForm}:
+        if self.form_class is DateOfBirthForm:
             kwargs["now"] = _now()
         return kwargs
 
     def _bind_post(self, request: HttpRequest) -> dict[str, Any]:
         post = request.POST
         mapping: dict[str, Any] = {
-            STEP_NAME: {
-                "first_name": post.get("first-name", ""),
-                "last_name": post.get("last-name", ""),
-            },
+            STEP_LICENCE_LENGTH: {"licence_length": post.get("licence-length", "")},
+            STEP_NAME: {"full_name": post.get("full-name", "")},
             STEP_DATE_OF_BIRTH: {
                 "day": post.get("date-of-birth-day", ""),
                 "month": post.get("date-of-birth-month", ""),
                 "year": post.get("date-of-birth-year", ""),
             },
+            STEP_WHERE_YOU_WILL_FISH: {"country": post.get("country", "")},
             STEP_EMAIL: {"email": post.get("email", "")},
-            STEP_CONTACT_PREFERENCE: {
-                "contact_by": post.get("contact-by", ""),
-                "telephone": post.get("telephone", ""),
-            },
-            STEP_WHERE_YOU_WILL_FISH: {"regions": post.getlist("regions")},
-            STEP_LICENCE_LENGTH: {"licence_length": post.get("licence-length", "")},
-            STEP_START_MONTH: {"start_month": post.get("start-month", "")},
-            STEP_ADDRESS: {
-                "address_line_1": post.get("address-line-1", ""),
-                "address_line_2": post.get("address-line-2", ""),
-                "town": post.get("town", ""),
-                "postcode": post.get("postcode", ""),
-            },
-            STEP_EVIDENCE: {"evidence": self._evidence_name(request)},
-            STEP_ADDITIONAL_DETAILS: {
-                "additional_details": post.get("additional-details", "")
-            },
-            STEP_CREATE_A_PASSWORD: {
-                "password": post.get("password", ""),
-                "password_confirm": post.get("password-confirm", ""),
-            },
         }
         return cast(dict[str, Any], mapping.get(self.step_id, {}))
-
-    def _evidence_name(self, request: HttpRequest) -> str:
-        upload = request.FILES.get("evidence")
-        if upload is None:
-            return ""
-        name = safe_filename(getattr(upload, "name", "") or "")
-        return name or ""
 
     def get_context_data(self, **kwargs: Any) -> dict[str, Any]:
         context = super().get_context_data(**kwargs)
@@ -344,7 +275,7 @@ class StepFormView(_JourneyFormView):
         return_to = ""
         if self.request.GET.get("return") == "check-answers":
             return_to = "check-answers"
-        back = "/task-list"
+        back = "/"
         if return_to:
             back = "/check-answers"
         else:
@@ -375,28 +306,13 @@ class StepFormView(_JourneyFormView):
         self, application: Application, errors: list[FieldError]
     ) -> dict[str, Any]:
         builders: dict[str, Any] = {
-            STEP_NAME: lambda: govuk_options.name_fields(application, errors),
-            STEP_DATE_OF_BIRTH: lambda: govuk_options.date_field(application, errors),
-            STEP_EMAIL: lambda: govuk_options.email_field(application, errors),
-            STEP_CONTACT_PREFERENCE: lambda: govuk_options.contact_fields(
-                application, errors
-            ),
-            STEP_WHERE_YOU_WILL_FISH: lambda: govuk_options.region_fields(
-                application, errors
-            ),
             STEP_LICENCE_LENGTH: lambda: govuk_options.licence_fields(application, errors),
-            STEP_START_MONTH: lambda: govuk_options.month_field(
-                application, errors, _now()
-            ),
-            STEP_ADDRESS: lambda: govuk_options.address_fields(application, errors),
-            STEP_EVIDENCE: lambda: {
-                **govuk_options.evidence_field(application, errors),
-                "enctype": "multipart/form-data",
-            },
-            STEP_ADDITIONAL_DETAILS: lambda: govuk_options.details_field(
+            STEP_NAME: lambda: govuk_options.name_field(application, errors),
+            STEP_DATE_OF_BIRTH: lambda: govuk_options.date_field(application, errors),
+            STEP_WHERE_YOU_WILL_FISH: lambda: govuk_options.country_fields(
                 application, errors
             ),
-            STEP_CREATE_A_PASSWORD: lambda: govuk_options.password_fields(errors),
+            STEP_EMAIL: lambda: govuk_options.email_field(application, errors),
         }
         builder = builders.get(self.step_id)
         return builder() if builder else {}
@@ -425,30 +341,23 @@ class StepFormView(_JourneyFormView):
         return redirect(target)
 
     def _errors_from_invalid(self, form: Any) -> list[FieldError]:
-        # Re-run validate helpers from cleaned/raw data for accurate field ids.
         data = form.data if hasattr(form, "data") else {}
         return self._validate_data(data)
 
     def _validate_data(self, data: dict[str, Any]) -> list[FieldError]:
         from service.validate import (
-            validate_additional_details,
-            validate_address,
-            validate_contact_preference,
+            validate_country,
             validate_date_of_birth,
             validate_email,
-            validate_evidence,
             validate_licence_length,
             validate_name,
-            validate_password,
-            validate_regions,
-            validate_start_month,
         )
 
         sid = self.step_id
+        if sid == STEP_LICENCE_LENGTH:
+            return validate_licence_length(str(data.get("licence_length") or ""))
         if sid == STEP_NAME:
-            return validate_name(
-                str(data.get("first_name") or ""), str(data.get("last_name") or "")
-            )
+            return validate_name(str(data.get("full_name") or ""))
         if sid == STEP_DATE_OF_BIRTH:
             return validate_date_of_birth(
                 str(data.get("day") or ""),
@@ -456,46 +365,22 @@ class StepFormView(_JourneyFormView):
                 str(data.get("year") or ""),
                 _now(),
             )
-        if sid == STEP_EMAIL:
-            return validate_email(str(data.get("email") or ""))
-        if sid == STEP_CONTACT_PREFERENCE:
-            return validate_contact_preference(
-                str(data.get("contact_by") or ""),
-                str(data.get("telephone") or ""),
-            )
         if sid == STEP_WHERE_YOU_WILL_FISH:
-            regions = data.get("regions") or []
-            if not isinstance(regions, list):  # pragma: no cover
-                regions = list(regions)
-            return validate_regions([str(r) for r in regions])
-        if sid == STEP_LICENCE_LENGTH:
-            return validate_licence_length(str(data.get("licence_length") or ""))
-        if sid == STEP_START_MONTH:
-            return validate_start_month(str(data.get("start_month") or ""), _now())
-        if sid == STEP_ADDRESS:
-            return validate_address(
-                str(data.get("address_line_1") or ""),
-                str(data.get("town") or ""),
-                str(data.get("postcode") or ""),
-            )
-        if sid == STEP_EVIDENCE:
-            return validate_evidence(str(data.get("evidence") or ""))
-        if sid == STEP_ADDITIONAL_DETAILS:
-            return validate_additional_details(str(data.get("additional_details") or ""))
-        return validate_password(
-            str(data.get("password") or ""),
-            str(data.get("password_confirm") or ""),
-        )
+            return validate_country(str(data.get("country") or ""))
+        return validate_email(str(data.get("email") or ""))
 
     def _apply(self, application: Application, form: Any, *, valid: bool) -> Application:
         data = form.data if hasattr(form, "data") else {}
         cleaned = getattr(form, "cleaned_data", None) or data
         sid = self.step_id
+        if sid == STEP_LICENCE_LENGTH:
+            return save_licence(
+                application, str(data.get("licence_length") or ""), valid=valid
+            )
         if sid == STEP_NAME:
             return save_name(
                 application,
-                str(cleaned.get("first_name") or data.get("first_name") or ""),
-                str(cleaned.get("last_name") or data.get("last_name") or ""),
+                str(cleaned.get("full_name") or data.get("full_name") or ""),
                 valid=valid,
             )
         if sid == STEP_DATE_OF_BIRTH:
@@ -506,50 +391,15 @@ class StepFormView(_JourneyFormView):
                 str(data.get("year") or ""),
                 valid=valid,
             )
-        if sid == STEP_EMAIL:
-            return save_email(application, str(data.get("email") or ""), valid=valid)
-        if sid == STEP_CONTACT_PREFERENCE:
-            return save_contact(
-                application,
-                str(data.get("contact_by") or ""),
-                str(data.get("telephone") or ""),
-                valid=valid,
-            )
         if sid == STEP_WHERE_YOU_WILL_FISH:
-            regions = data.get("regions") or []
-            if not isinstance(regions, list):  # pragma: no cover
-                regions = list(regions)
-            return save_regions(application, [str(r) for r in regions], valid=valid)
-        if sid == STEP_LICENCE_LENGTH:
-            return save_licence(
-                application, str(data.get("licence_length") or ""), valid=valid
-            )
-        if sid == STEP_START_MONTH:
-            return save_month(
-                application, str(data.get("start_month") or ""), valid=valid
-            )
-        if sid == STEP_ADDRESS:
-            return save_address(
-                application,
-                AddressValues(
-                    line1=str(data.get("address_line_1") or ""),
-                    line2=str(data.get("address_line_2") or ""),
-                    town=str(data.get("town") or ""),
-                    postcode=str(data.get("postcode") or ""),
-                ),
-                valid=valid,
-            )
-        if sid == STEP_EVIDENCE:
-            filename = str(data.get("evidence") or "")
-            has_file = bool(filename)
-            return save_evidence(
-                application, filename, has_file=has_file, valid=valid
-            )
-        if sid == STEP_ADDITIONAL_DETAILS:
-            return save_details(
-                application, str(data.get("additional_details") or ""), valid=valid
-            )
-        return save_password(application, valid=valid)
+            return save_country(application, str(data.get("country") or ""), valid=valid)
+        return save_email(application, str(data.get("email") or ""), valid=valid)
+
+
+class LicenceLengthView(StepFormView):
+    step_id = STEP_LICENCE_LENGTH
+    form_class = LicenceLengthForm
+    template_name = "service/licence_length.html"
 
 
 class NameView(StepFormView):
@@ -564,58 +414,16 @@ class DateOfBirthView(StepFormView):
     template_name = "service/date_of_birth.html"
 
 
-class EmailView(StepFormView):
-    step_id = STEP_EMAIL
-    form_class = EmailForm
-    template_name = "service/email.html"
-
-
-class ContactPreferenceView(StepFormView):
-    step_id = STEP_CONTACT_PREFERENCE
-    form_class = ContactPreferenceForm
-    template_name = "service/contact_preference.html"
-
-
 class WhereYouWillFishView(StepFormView):
     step_id = STEP_WHERE_YOU_WILL_FISH
     form_class = WhereYouWillFishForm
     template_name = "service/where_you_will_fish.html"
 
 
-class LicenceLengthView(StepFormView):
-    step_id = STEP_LICENCE_LENGTH
-    form_class = LicenceLengthForm
-    template_name = "service/licence_length.html"
-
-
-class StartMonthView(StepFormView):
-    step_id = STEP_START_MONTH
-    form_class = StartMonthForm
-    template_name = "service/start_month.html"
-
-
-class AddressView(StepFormView):
-    step_id = STEP_ADDRESS
-    form_class = AddressForm
-    template_name = "service/address.html"
-
-
-class EvidenceView(StepFormView):
-    step_id = STEP_EVIDENCE
-    form_class = EvidenceForm
-    template_name = "service/evidence.html"
-
-
-class AdditionalDetailsView(StepFormView):
-    step_id = STEP_ADDITIONAL_DETAILS
-    form_class = AdditionalDetailsForm
-    template_name = "service/additional_details.html"
-
-
-class CreatePasswordView(StepFormView):
-    step_id = STEP_CREATE_A_PASSWORD
-    form_class = PasswordForm
-    template_name = "service/create_a_password.html"
+class EmailView(StepFormView):
+    step_id = STEP_EMAIL
+    form_class = EmailForm
+    template_name = "service/email.html"
 
 
 class CheckAnswersView(View):
@@ -631,13 +439,12 @@ class CheckAnswersView(View):
         context = _layout(
             request,
             heading="Check your answers",
-            back_link={"text": "Back", "href": "/create-a-password"},
+            back_link={"text": "Back", "href": "/email"},
             main_classes="govuk-main-wrapper--l",
             personal=True,
         )
-        rows = summary_rows(application, _now())
-        context["summary_list"] = {"rows": rows}
-        context["submit_button"] = {"text": "Submit application"}
+        context["summary_list"] = {"rows": summary_rows(application)}
+        context["submit_button"] = {"text": "Accept and continue"}
         return render(request, self.template_name, context)
 
     def post(self, request: HttpRequest) -> HttpResponse:
@@ -661,7 +468,7 @@ class ConfirmationView(TemplateView):
     def get(self, request: HttpRequest, *args: object, **kwargs: object) -> HttpResponse:
         application = get_application(request)
         if not application.submitted:
-            return redirect("/task-list")
+            return redirect("/")
         context = _layout(
             request,
             heading="Application complete",

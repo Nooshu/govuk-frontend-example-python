@@ -146,7 +146,7 @@ def cookie_banner_options(request: HttpRequest) -> dict[str, Any] | None:
     return {
         "messages": [
             {
-                "headingText": "Cookies on Apply for a rod fishing licence",
+                "headingText": "Cookies on Apply for a fishing rod licence",
                 "text": (
                     "We use analytics cookies to understand how you use this example service. "
                     "This example does not set analytics cookies."

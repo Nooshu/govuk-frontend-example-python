@@ -5,11 +5,18 @@ from __future__ import annotations
 from datetime import UTC, datetime
 
 import pytest
-from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client, RequestFactory, override_settings
 from previews.catalogue import describe, described_names, parity_banner, title_from_kebab
-from service.answers import summary_rows, task_sections
-from service.application import Application, first_incomplete_step, step_by_path, steps
+from service.answers import summary_rows
+from service.application import (
+    Application,
+    first_incomplete_step,
+    mark_completed,
+    reference_for,
+    required_steps_complete,
+    step_by_path,
+    steps,
+)
 from service.assets import clear_asset_cache, load_page_assets, resolve_asset
 from service.chrome import (
     cookie_banner_options,
@@ -21,46 +28,20 @@ from service.chrome import (
     service_navigation,
 )
 from service.govuk_options import (
-    address_fields,
     confirmation_panel,
-    contact_fields,
     cookie_fields,
+    country_fields,
     date_field,
-    details_field,
     email_field,
     error_summary,
-    evidence_field,
     fees_table,
     guidance_tabs,
     help_accordion,
     licence_fields,
-    month_field,
-    name_fields,
-    password_fields,
-    region_fields,
+    name_field,
 )
-from service.options import (
-    contact_options,
-    label_for,
-    licence_length_options,
-    licence_lengths,
-    regions,
-    start_months,
-)
-from service.save import (
-    AddressValues,
-    save_address,
-    save_contact,
-    save_date,
-    save_details,
-    save_email,
-    save_evidence,
-    save_licence,
-    save_month,
-    save_name,
-    save_password,
-    save_regions,
-)
+from service.options import countries, label_for, licence_fees, licence_lengths
+from service.save import save_country, save_date, save_email, save_licence, save_name
 from service.session import (
     CHOICE_ACCEPT,
     CHOICE_REJECT,
@@ -78,22 +59,13 @@ from service.session import (
 )
 from service.validate import (
     FieldError,
-    as_contact_by,
     as_licence_length,
-    normalise_postcode,
-    safe_filename,
-    validate_additional_details,
-    validate_address,
-    validate_contact_preference,
     validate_cookie_choice,
+    validate_country,
     validate_date_of_birth,
     validate_email,
-    validate_evidence,
     validate_licence_length,
     validate_name,
-    validate_password,
-    validate_regions,
-    validate_start_month,
 )
 
 FIXED = datetime(2026, 3, 1, 12, 0, 0, tzinfo=UTC)
@@ -163,6 +135,7 @@ def test_cookie_banner_and_settings(client: Client) -> None:
     start = client.get("/")
     assert start.status_code == 200
     assert b"cookie-banner" in start.content or b"Cookies on" in start.content
+    assert b"Apply for a fishing rod licence" in start.content
 
     accept = client.post("/cookie-choices", {"cookies": "accept", "returnPath": "/fees"})
     assert accept.status_code == 302
@@ -191,8 +164,12 @@ def test_step_pages_render(client: Client) -> None:
         assert response.status_code == 200, step.path
 
 
-def test_telephone_contact_and_evidence_upload(client: Client) -> None:
-    client.post("/name", {"first-name": "Ada", "last-name": "Lovelace"})
+def test_country_and_licence_length(client: Client) -> None:
+    length = client.post("/licence-length", {"licence-length": "8-days"})
+    assert length.status_code == 302
+    assert length["Location"] == "/name"
+
+    client.post("/name", {"full-name": "Ada Lovelace"})
     client.post(
         "/date-of-birth",
         {
@@ -201,31 +178,13 @@ def test_telephone_contact_and_evidence_upload(client: Client) -> None:
             "date-of-birth-year": "1990",
         },
     )
-    client.post("/email", {"email": "ada@example.com"})
-    response = client.post(
-        "/contact-preference",
-        {"contact-by": "telephone", "telephone": "01632 960 001"},
-    )
-    assert response.status_code == 302
+    country = client.post("/where-you-will-fish", {"country": "Wales"})
+    assert country.status_code == 302
+    assert country["Location"] == "/email"
 
-    upload = SimpleUploadedFile("concession.pdf", b"%PDF-1.4", content_type="application/pdf")
-    # walk to evidence
-    client.post("/where-you-will-fish", {"regions": ["not-sure"]})
-    client.post("/licence-length", {"licence-length": "1-day"})
-    client.post("/start-month", {"start-month": start_months(FIXED)[0].value})
-    client.post(
-        "/address",
-        {"address-line-1": "1 High Street", "town": "Town", "postcode": "SW1A 1AA"},
-    )
-    uploaded = client.post("/evidence", {"evidence": upload})
-    assert uploaded.status_code == 302
-    page = client.get("/evidence")
-    assert b"concession.pdf" in page.content
-
-    bad = SimpleUploadedFile("virus.exe", b"MZ", content_type="application/octet-stream")
-    rejected = client.post("/evidence", {"evidence": bad})
-    assert rejected.status_code == 302
-    assert rejected["Location"] == "/evidence"
+    page = client.get("/where-you-will-fish")
+    assert b"England" in page.content
+    assert b"This example is fictional" in page.content
 
 
 def test_check_answers_guards(client: Client) -> None:
@@ -234,7 +193,6 @@ def test_check_answers_guards(client: Client) -> None:
 
 
 def test_return_to_check_answers(client: Client) -> None:
-    # Minimal complete required steps via session helpers would be heavy; use posts.
     from tests.test_journey import _complete_journey
 
     _complete_journey(client)
@@ -242,7 +200,7 @@ def test_return_to_check_answers(client: Client) -> None:
     assert b'returnTo" value="check-answers"' in page.content or b"returnTo" in page.content
     changed = client.post(
         "/name",
-        {"first-name": "Grace", "last-name": "Hopper", "returnTo": "check-answers"},
+        {"full-name": "Grace Hopper", "returnTo": "check-answers"},
     )
     assert changed["Location"] == "/check-answers"
 
@@ -253,123 +211,84 @@ def test_not_found(client: Client) -> None:
 
 
 def test_validate_and_save_branches() -> None:
-    assert validate_name("", "").__len__() == 2
-    assert validate_name("x" * 101, "y").__len__() == 1
+    assert validate_name("").__len__() == 1
+    assert validate_name("x").__len__() == 1
+    assert validate_name("x" * 101).__len__() == 1
+    assert validate_name("Ada Lovelace") == []
     assert validate_date_of_birth("", "", "", FIXED)
     assert validate_date_of_birth("32", "1", "1990", FIXED)
     assert validate_date_of_birth("31", "2", "1990", FIXED)
     assert validate_date_of_birth("1", "1", "2099", FIXED)
     assert validate_date_of_birth("1", "1", "2020", FIXED)  # under 13 in 2026
     assert validate_email("bad")
-    assert validate_contact_preference("", "")
-    assert validate_contact_preference("telephone", "")
-    assert validate_contact_preference("telephone", "bad")
-    assert validate_regions([])
-    assert validate_regions(["not-sure", "wales"])
-    assert validate_regions(["nope"])
+    assert validate_country("")
+    assert validate_country("France")
+    assert validate_country("England") == []
     assert validate_licence_length("nope")
-    assert validate_start_month("1999-01", FIXED)
-    assert validate_address("", "", "")
-    assert validate_address("x" * 101, "Town", "SW1A 1AA")
-    assert validate_address("1 Street", "", "not-a-postcode")
-    assert validate_evidence("x.exe")
-    assert validate_evidence("") == []
-    assert validate_additional_details("x" * 201)
-    assert validate_password("short", "short")
-    assert validate_password("long enough", "different")
+    assert validate_licence_length("12-months") == []
     assert validate_cookie_choice("maybe")
-    assert normalise_postcode("sw1a1aa") == "SW1A 1AA"
-    assert normalise_postcode("ab") == ""
-    assert as_contact_by("email") == "email"
-    assert as_contact_by("nope") == ""
     assert as_licence_length("1-day") == "1-day"
+    assert as_licence_length("8-days") == "8-days"
+    assert as_licence_length("12-months") == "12-months"
     assert as_licence_length("nope") == ""
-    assert safe_filename("../x.pdf") == "x.pdf"
-    assert safe_filename("..") is None
-    assert safe_filename("x" * 130 + ".pdf") is None
 
     app = Application()
-    app = save_name(app, "Ada", "Lovelace", valid=True)
+    app = save_licence(app, "12-months", valid=True)
+    app = save_name(app, "Ada Lovelace", valid=True)
     app = save_date(app, "10", "12", "1990", valid=True)
+    app = save_country(app, "England", valid=True)
     app = save_email(app, "ada@example.com", valid=True)
-    app = save_contact(app, "telephone", "01632 960 001", valid=True)
-    app = save_regions(app, ["wales", "bogus"], valid=True)
-    app = save_licence(app, "12-month", valid=True)
-    app = save_month(app, "2026-03", valid=True)
-    app = save_address(
-        app,
-        AddressValues("1 Street", "Flat 1", "Town", "sw1a 1aa"),
-        valid=True,
-    )
-    app = save_address(
-        app,
-        AddressValues("1 Street", "", "Town", "bad"),
-        valid=False,
-    )
-    assert first_incomplete_step(app) is not None
-    app = save_address(
-        app,
-        AddressValues("1 Street", "Flat 1", "Town", "sw1a 1aa"),
-        valid=True,
-    )
-    app = save_evidence(app, "file.pdf", has_file=True, valid=True)
-    app = save_details(app, "note", valid=True)
-    app = save_password(app, valid=True)
-    assert app.password_created
     assert first_incomplete_step(app) is None
-    rows = summary_rows(app, FIXED)
-    assert rows
-    sections = task_sections(app)
-    assert sections[-1].items[0]["href"] == "/check-answers"
-    app.submitted = True
-    sections = task_sections(app)
-    assert sections[-1].items[0]["status"]["text"] == "Completed"
-    incomplete = Application()
-    assert "Cannot start yet" in str(task_sections(incomplete)[-1].items[0])
+    assert required_steps_complete(app)
+    rows = summary_rows(app)
+    assert len(rows) == 5
+    assert rows[0]["value"]["text"] == "12 months"
+    assert rows[1]["value"]["text"] == "Ada Lovelace"
+    assert rows[2]["value"]["text"] == "10 12 1990"
+    assert rows[3]["value"]["text"] == "England"
+    assert rows[4]["value"]["text"] == "ada@example.com"
+
+    invalid = save_licence(Application(), "nope", valid=False)
+    assert first_incomplete_step(invalid) is not None
+    assert reference_for("abc12345").startswith("FR")
+    assert mark_completed(["licence-length"], "licence-length") == ["licence-length"]
 
 
 def test_govuk_options_builders() -> None:
-    app = Application(first_name="Ada", last_name="Lovelace", email="a@b.c")
-    errors = [FieldError("first-name", "#first-name", "Enter your first name")]
+    app = Application(full_name="Ada Lovelace", email="a@b.c", country="England")
+    errors = [FieldError("full-name", "#full-name", "Enter your full name")]
     assert error_summary([]) is None
     assert error_summary(errors)
-    assert name_fields(app, errors)
+    assert name_field(app, errors)
+    assert name_field(app, [FieldError("other", "#other", "ignored")])
     assert email_field(app, [])
     assert date_field(app, [FieldError("date-of-birth", "#x", "bad")])
-    assert contact_fields(app, [])
-    app.contact_by = "telephone"
-    assert contact_fields(app, [])
-    assert region_fields(app, [])
-    assert licence_fields(app, [])
-    assert month_field(app, [], FIXED)
-    assert address_fields(app, [])
-    assert evidence_field(app, [])
-    assert details_field(app, [])
-    assert password_fields(errors)
+    assert country_fields(app, [FieldError("country", "#country", "Select where you will fish")])
+    assert licence_fields(app, [FieldError("licence-length", "#licence-length", "Select")])
     assert cookie_fields("accept", [])
     assert cookie_fields("reject", [])
-    assert cookie_fields("", [])
+    assert cookie_fields("", [FieldError("analytics", "#analytics", "Select yes")])
     assert fees_table()
     assert help_accordion()
     assert guidance_tabs()
     assert "Ada" not in str(confirmation_panel("<script>"))
-    assert confirmation_panel("RL123")
+    panel = confirmation_panel("FR123")
+    assert "Your example reference number" in str(panel["html"])
+    assert "FR123" in str(panel["html"])
 
 
 def test_options_helpers() -> None:
-    assert regions()
+    assert countries()
     assert licence_lengths()
-    assert contact_options()
-    assert licence_length_options()
-    assert start_months(FIXED)
-    assert label_for(regions(), "wales") == "Wales"
-    assert label_for(regions(), "unknown") == "unknown"
+    assert licence_fees()
+    assert label_for(countries(), "Wales") == "Wales"
+    assert label_for(countries(), "unknown") == "unknown"
+    assert label_for(licence_lengths(), "8-days") == "8 days"
 
 
 def test_chrome_helpers(rf: RequestFactory) -> None:
     request = rf.get("/about")
     request.session = {}  # type: ignore[attr-defined]
-    # Django session needs a real session; use Client instead for cookie banner.
     assert page_title("H", "S", has_errors=True).startswith("Error:")
     assert phase_banner("cy")["tag"]["text"] == "Enghraifft"
     assert demo_banner("cy")["titleText"] == "Pwysig"
@@ -383,7 +302,6 @@ def test_chrome_helpers(rf: RequestFactory) -> None:
 
 def test_session_helpers(client: Client) -> None:
     client.get("/")
-    # Use request through views already; exercise helpers via RequestFactory + session
     from django.contrib.sessions.backends.cache import SessionStore
 
     store = SessionStore()
@@ -392,9 +310,9 @@ def test_session_helpers(client: Client) -> None:
     request.session = store
     clear_application(request)
     app = get_application(request)
-    app.first_name = "Ada"
+    app.full_name = "Ada"
     save_application(request, app)
-    assert get_application(request).first_name == "Ada"
+    assert get_application(request).full_name == "Ada"
     set_cookie_choice(request, CHOICE_ACCEPT)
     assert get_cookie_choice(request) == CHOICE_ACCEPT
     set_cookie_banner(request, CHOICE_REJECT)
@@ -403,9 +321,9 @@ def test_session_helpers(client: Client) -> None:
     assert pop_notice_for(request, "/other") == ""
     set_notice(request, "/cookies", "Saved")
     assert pop_notice_for(request, "/cookies") == "Saved"
-    set_errors(request, "/name", [{"field": "first-name", "href": "#", "text": "x"}])
+    set_errors(request, "/name", [{"field": "full-name", "href": "#", "text": "x"}])
     assert pop_errors_for(request, "/email") == []
-    set_errors(request, "/name", [{"field": "first-name", "href": "#", "text": "x"}])
+    set_errors(request, "/name", [{"field": "full-name", "href": "#", "text": "x"}])
     assert pop_errors_for(request, "/name")
     assert cookie_banner_options(request) is None or True
     set_cookie_choice(request, "")
@@ -437,16 +355,17 @@ def test_component_unknown_and_fixture_query(client: Client) -> None:
     assert client.get("/components/not-a-real-component/fixture/").status_code == 404
     detail = client.get("/components/button/")
     assert detail.status_code == 200
-    # named fixture from page links
     assert b"Versions" in detail.content
 
 
 def test_application_helpers() -> None:
     assert step_by_path("/name") is not None
+    assert step_by_path("/licence-length") is not None
     assert step_by_path("/nope") is None
     empty = Application.from_dict(None)
-    assert empty.first_name == ""
-    assert Application.from_dict({"regions": "bad", "completed": "bad"}).regions == []
+    assert empty.full_name == ""
+    assert Application.from_dict({"completed": "bad"}).completed == []
+    assert Application.from_dict({"full_name": "Ada"}).to_dict()["full_name"] == "Ada"
 
 
 def test_baseline_and_demos_env(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -482,3 +401,16 @@ def test_middleware_compression(client: Client) -> None:
 
 def test_cookie_choices_get_not_allowed(client: Client) -> None:
     assert client.get("/cookie-choices").status_code == 405
+
+
+def test_removed_routes_are_gone(client: Client) -> None:
+    for path in (
+        "/task-list",
+        "/contact-preference",
+        "/start-month",
+        "/address",
+        "/evidence",
+        "/additional-details",
+        "/create-a-password",
+    ):
+        assert client.get(path).status_code == 404, path

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-from datetime import UTC, datetime
 
 import pytest
 from config.middleware import BaselineHeadersMiddleware, CompressionMiddleware
@@ -21,14 +20,9 @@ from govuk_components.rendering.params import (
 from service.application import Application
 from service.assets import resolve_asset
 from service.forms import (
-    AdditionalDetailsForm,
-    AddressForm,
-    ContactPreferenceForm,
     EmailForm,
-    EvidenceForm,
     LicenceLengthForm,
-    PasswordForm,
-    StartMonthForm,
+    NameForm,
     WhereYouWillFishForm,
     field_errors_from_form,
 )
@@ -146,18 +140,11 @@ def test_middleware_skip_and_streaming() -> None:
 
 def test_all_forms_validate() -> None:
     assert not EmailForm({"email": "bad"}).is_valid()
-    assert not ContactPreferenceForm({"contact_by": "", "telephone": ""}).is_valid()
-    assert not WhereYouWillFishForm({"regions": []}).is_valid()
+    assert not NameForm({"full_name": ""}).is_valid()
+    assert not WhereYouWillFishForm({"country": ""}).is_valid()
     assert not LicenceLengthForm({"licence_length": ""}).is_valid()
-    assert not StartMonthForm({"start_month": ""}, now=datetime(2026, 3, 1, tzinfo=UTC)).is_valid()
-    assert not AddressForm(
-        {"address_line_1": "", "town": "", "postcode": ""}
-    ).is_valid()
-    assert EvidenceForm({"evidence": ""}).is_valid()
-    assert not AdditionalDetailsForm({"additional_details": "x" * 201}).is_valid()
-    assert not PasswordForm(
-        {"password": "short", "password_confirm": "short"}
-    ).is_valid()
+    assert WhereYouWillFishForm({"country": "Scotland"}).is_valid()
+    assert LicenceLengthForm({"licence_length": "1-day"}).is_valid()
     form = EmailForm({"email": "bad"})
     form.is_valid()
     assert field_errors_from_form(form, {}) == []
@@ -179,7 +166,7 @@ def test_asset_root_files(client: Client) -> None:
 def test_failed_return_to_keeps_query(client: Client) -> None:
     reply = client.post(
         "/name",
-        {"first-name": "", "last-name": "", "returnTo": "check-answers"},
+        {"full-name": "", "returnTo": "check-answers"},
     )
     assert "return=check-answers" in reply["Location"]
 
@@ -225,9 +212,11 @@ def test_field_errors_all_and_incomplete_submit(client: Client) -> None:
 
     reply = client.post("/check-answers")
     assert reply.status_code == 302
-    assert reply["Location"] == "/name"
+    assert reply["Location"] == "/licence-length"
 
     posts = [
+        ("/licence-length", {}),
+        ("/name", {"full-name": ""}),
         (
             "/date-of-birth",
             {
@@ -236,14 +225,8 @@ def test_field_errors_all_and_incomplete_submit(client: Client) -> None:
                 "date-of-birth-year": "",
             },
         ),
+        ("/where-you-will-fish", {"country": ""}),
         ("/email", {"email": "bad"}),
-        ("/contact-preference", {"contact-by": ""}),
-        ("/where-you-will-fish", {}),
-        ("/licence-length", {}),
-        ("/start-month", {"start-month": ""}),
-        ("/address", {"address-line-1": "", "town": "", "postcode": ""}),
-        ("/additional-details", {"additional-details": "x" * 201}),
-        ("/create-a-password", {"password": "x", "password-confirm": "y"}),
     ]
     for path, data in posts:
         response = client.post(path, data)
@@ -251,15 +234,11 @@ def test_field_errors_all_and_incomplete_submit(client: Client) -> None:
 
 
 def test_answers_zero_day() -> None:
-    from datetime import UTC, datetime
-
     from service.answers import summary_rows
 
-    rows = summary_rows(
-        Application(day="0", month="1", year="1990"),
-        datetime(2026, 3, 1, tzinfo=UTC),
-    )
+    rows = summary_rows(Application(day="0", month="1", year="1990"))
     assert any(r["key"]["text"] == "Date of birth" for r in rows)
+    assert any(r["value"]["text"] == "0 1 1990" for r in rows)
 
 
 def test_next_step_unknown() -> None:

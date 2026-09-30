@@ -6,7 +6,6 @@ from datetime import UTC, datetime
 
 import pytest
 from django.test import Client
-from service.options import start_months
 
 
 @pytest.fixture
@@ -14,13 +13,10 @@ def client() -> Client:
     return Client()
 
 
-def _start_month() -> str:
-    return start_months(datetime(2026, 3, 1, 12, 0, 0, tzinfo=UTC))[0].value
-
-
 def _complete_journey(client: Client) -> None:
     steps = [
-        ("/name", {"first-name": "Ada", "last-name": "Lovelace"}),
+        ("/licence-length", {"licence-length": "12-months"}),
+        ("/name", {"full-name": "Ada Lovelace"}),
         (
             "/date-of-birth",
             {
@@ -29,25 +25,8 @@ def _complete_journey(client: Client) -> None:
                 "date-of-birth-year": "1990",
             },
         ),
+        ("/where-you-will-fish", {"country": "England"}),
         ("/email", {"email": "ada@example.com"}),
-        ("/contact-preference", {"contact-by": "email"}),
-        ("/where-you-will-fish", {"regions": ["north-west", "wales"]}),
-        ("/licence-length", {"licence-length": "12-month"}),
-        ("/start-month", {"start-month": _start_month()}),
-        (
-            "/address",
-            {
-                "address-line-1": "1 Example Street",
-                "town": "Exampleton",
-                "postcode": "sw1a 1aa",
-            },
-        ),
-        ("/evidence", {}),
-        ("/additional-details", {"additional-details": "Nothing else"}),
-        (
-            "/create-a-password",
-            {"password": "correct horse", "password-confirm": "correct horse"},
-        ),
     ]
     for path, data in steps:
         response = client.post(path, data)
@@ -59,13 +38,17 @@ def test_happy_path_reaches_confirmation(client: Client, monkeypatch: pytest.Mon
     monkeypatch.setattr("service.views._now", lambda: fixed)
 
     assert client.get("/").status_code == 200
-    assert client.get("/task-list").status_code == 200
+    start = client.get("/")
+    assert b"/licence-length" in start.content
     _complete_journey(client)
 
     check = client.get("/check-answers")
     assert check.status_code == 200
     assert b"Check your answers" in check.content
     assert b"Ada Lovelace" in check.content
+    assert b"Accept and continue" in check.content
+    assert b"10 12 1990" in check.content
+    assert b"England" in check.content
 
     submit = client.post("/check-answers")
     assert submit.status_code == 302
@@ -74,6 +57,9 @@ def test_happy_path_reaches_confirmation(client: Client, monkeypatch: pytest.Mon
     confirmation = client.get("/confirmation")
     assert confirmation.status_code == 200
     assert b"Application complete" in confirmation.content
+    assert b"Your example reference number" in confirmation.content
+    assert b"Back to the component list" in confirmation.content
+    assert b'href="/components"' in confirmation.content
 
 
 def test_failed_name_shows_error_summary(
@@ -83,7 +69,7 @@ def test_failed_name_shows_error_summary(
         "service.views._now",
         lambda: datetime(2026, 3, 1, 12, 0, 0, tzinfo=UTC),
     )
-    reply = client.post("/name", {"first-name": "", "last-name": ""})
+    reply = client.post("/name", {"full-name": ""})
     assert reply.status_code == 302
     assert reply["Location"] == "/name"
 
@@ -91,6 +77,7 @@ def test_failed_name_shows_error_summary(
     assert page.status_code == 200
     assert b"error-summary" in page.content
     assert b"<title>Error: " in page.content
+    assert b"Enter your full name" in page.content
 
     # Errors are flash: a refresh shows a clean question.
     assert b"error-summary" not in client.get("/name").content

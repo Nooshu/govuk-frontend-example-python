@@ -176,13 +176,12 @@ def test_govuk_html_tag() -> None:
 
 
 def test_forms_field_errors_helper() -> None:
-    form = NameForm({"first_name": "", "last_name": ""})
+    form = NameForm({"full_name": ""})
     assert not form.is_valid()
     errors = field_errors_from_form(
         form,
         {
-            "first_name": ("first-name", "#first-name"),
-            "last_name": ("last-name", "#last-name"),
+            "full_name": ("full-name", "#full-name"),
             "__all__": ("date-of-birth", "#date-of-birth-day"),
         },
     )
@@ -197,22 +196,23 @@ def test_forms_field_errors_helper() -> None:
 
 def test_answers_edge_cases() -> None:
     app = Application(day="x", month="1", year="1990")
-    rows = summary_rows(app, datetime(2026, 3, 1, tzinfo=UTC))
+    rows = summary_rows(app)
     assert any(
-        row["value"]["text"] == "Not provided" or row["key"]["text"] == "Date of birth"
+        row["value"]["text"] == "x 1 1990" or row["key"]["text"] == "Date of birth"
         for row in rows
     )
-    app2 = Application(day="31", month="2", year="1990")
-    summary_rows(app2)
-    app3 = Application(regions=["not-sure"])
-    assert "Not decided" in str(summary_rows(app3))
+    app2 = Application(day="", month="2", year="1990")
+    assert any(row["value"]["text"] == "Not provided" for row in summary_rows(app2))
+    app3 = Application(country="Scotland", full_name="")
+    assert any(row["value"]["text"] == "Scotland" for row in summary_rows(app3))
 
 
 def test_application_next_prev() -> None:
-    assert previous_step("name") is None
-    assert next_step("create-a-password") is None
+    assert previous_step("licence-length") is None
+    assert next_step("email") is None
     assert step_by_id("nope") is None
-    assert next_step("name") is not None
+    assert next_step("licence-length") is not None
+    assert previous_step("name") is not None
 
 
 def test_baseline_download_headers() -> None:
@@ -233,7 +233,7 @@ def test_baseline_download_headers() -> None:
 
 
 def test_sensitive_document(client: Client) -> None:
-    response = client.get("/task-list")
+    response = client.get("/licence-length")
     assert response.status_code == 200
     assert "no-store" in response.get("Cache-Control", "")
 
