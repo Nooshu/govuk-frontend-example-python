@@ -116,7 +116,7 @@ def footer_options(lang: str) -> dict[str, Any]:
     if settings.DEMOS_ENABLED:
         items.extend(
             [
-                {"href": "/components/", "text": "Component catalogue"},
+                {"href": "/components", "text": "Component catalogue"},
                 {"href": "/examples", "text": "Example pages"},
             ]
         )
