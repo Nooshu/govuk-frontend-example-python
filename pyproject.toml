@@ -6,7 +6,7 @@ readme = "README.md"
 authors = [{ name = "Matt Hobbs", email = "matt@nooshu.com" }]
 requires-python = ">=3.13"
 dependencies = [
-  "django~=5.2",
+  "django>=5.2,<7.0",
   "gunicorn>=23.0",
   "brotli>=1.1",
 ]
