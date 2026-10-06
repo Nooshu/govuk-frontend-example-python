@@ -5,8 +5,11 @@
 >
 > This includes using and adapting it within your department, organisation, or project.
 
+<!-- Separate GitHub alerts for markdownlint MD028 -->
+
 > [!WARNING]
-> ### 🚨 Example repository only
+>
+> **🚨 Example repository only**
 >
 > This repository is a **demonstration only**. It will not be actively maintained or supported.
 >
