@@ -1,5 +1,11 @@
 # GOV.UK Frontend example (Python / Django)
 
+> [!NOTE]
+>
+> This repository was written for **[Building Services to GDS Standards Without a Frontend Framework](https://nooshu.com/blog/2026/10/15/building-services-to-gds-standards-without-a-frontend-framework/)**.
+
+<!-- Separate GitHub alerts for markdownlint MD028 -->
+
 > [!IMPORTANT]
 > You are free to fork, modify, and maintain this repository for your own use.
 >
