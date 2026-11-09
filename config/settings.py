@@ -14,7 +14,7 @@ SECRET_KEY = os.environ.get(
 
 DEBUG = os.environ.get("DEBUG", "true").lower() in {"1", "true", "yes"}
 
-# Demos (component catalogue) are on in DEBUG, or when DEMOS_ENABLED=true (Render).
+# Demos (component catalogue) are on in DEBUG, or when DEMOS_ENABLED=true (Cloud Run).
 _demos_env = os.environ.get("DEMOS_ENABLED")
 DEMOS_ENABLED = (
     DEBUG
@@ -68,7 +68,7 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "config.wsgi.application"
 
-# No database — in-memory sessions only (Render free tier friendly).
+# No database — in-memory sessions only (fine for a single Cloud Run instance).
 DATABASES: dict[str, dict[str, str]] = {}
 
 # Pinned GOV.UK Frontend release (must match package.json / fixtures).

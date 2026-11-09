@@ -1,0 +1,15 @@
+.git
+.github
+.cursor
+.idea
+.vscode
+node_modules
+.venv
+dist
+docs
+tests
+__pycache__
+*.pyc
+*.md
+!README.md
+.DS_Store

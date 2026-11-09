@@ -50,7 +50,7 @@
 
 `npm start` builds the Sass stylesheet and runs Django. If `.venv` is missing, it runs `uv sync` for you (when `uv` is available). Then open <http://127.0.0.1:8000>.
 
-Journey and docs: [`docs/example-service.md`](docs/example-service.md). Deploy: [`docs/deploying-on-render.md`](docs/deploying-on-render.md).
+Journey and docs: [`docs/example-service.md`](docs/example-service.md). Deploy: [`docs/deploying-on-cloud-run.md`](docs/deploying-on-cloud-run.md).
 
 ## Checks
 

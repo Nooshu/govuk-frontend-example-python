@@ -1,4 +1,4 @@
-# Multi-stage build for Render.com free tier (and local Docker).
+# Multi-stage build for Cloud Run (and local Docker).
 # Stage 1: Node — install Frontend pin and compile Sass (never prebuilt min.css)
 # Stage 2: Python — install deps with uv into /app/.venv (same path as runtime)
 # Stage 3: Runtime — Gunicorn + assets + baseline
@@ -47,6 +47,6 @@ COPY previews ./previews
 COPY manage.py ./
 COPY styles ./styles
 
-EXPOSE 8000
-# Render injects PORT; prefer WEB_CONCURRENCY when Render sets it
-CMD ["sh", "-c", "exec /app/.venv/bin/gunicorn config.wsgi:application --bind 0.0.0.0:${PORT:-8000} --workers ${WEB_CONCURRENCY:-2} --threads 2 --timeout 60"]
+EXPOSE 8080
+# Cloud Run injects PORT. WEB_CONCURRENCY overrides the worker count.
+CMD ["sh", "-c", "exec /app/.venv/bin/gunicorn config.wsgi:application --bind 0.0.0.0:${PORT:-8080} --workers ${WEB_CONCURRENCY:-2} --threads 2 --timeout 60"]

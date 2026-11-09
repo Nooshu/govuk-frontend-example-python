@@ -20,9 +20,9 @@ npm start
 
 `npm start` compiles the Sass stylesheet, then runs Django’s development server (and syncs `.venv` via `uv` if it is missing). Opens at <http://127.0.0.1:8000>. Set `PORT` (and optionally `HOST`) to change the bind address.
 
-Public demo hosting: [deploying-on-render.md](deploying-on-render.md).
+Public demo hosting: [deploying-on-cloud-run.md](deploying-on-cloud-run.md).
 
-`DEBUG=false` hides the component catalogue and the extra example pages unless `DEMOS_ENABLED=true` (set on the Render demo). The licence journey stays available.
+`DEBUG=false` hides the component catalogue and the extra example pages unless `DEMOS_ENABLED=true` (set on the Cloud Run demo). The licence journey stays available.
 
 ## Start to confirmation
 

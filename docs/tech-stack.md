@@ -42,7 +42,7 @@ Combined gate: `npm run verify` (docs + styles + Node tests) and `uv run pytest`
 
 ## Shared baseline
 
-[`baseline/`](../baseline/) is the response-header contract. Python loads [`baseline/policy.json`](../baseline/policy.json) in [`config/baseline.py`](../config/baseline.py) and applies it via middleware. Production HTTPS uses `secure_transport=True` (detect `X-Forwarded-Proto` on Render).
+[`baseline/`](../baseline/) is the response-header contract. Python loads [`baseline/policy.json`](../baseline/policy.json) in [`config/baseline.py`](../config/baseline.py) and applies it via middleware. Production HTTPS uses `secure_transport=True` (detect `X-Forwarded-Proto` on Cloud Run).
 
 ## Styles (Sass — not prebuilt CSS)
 
@@ -66,7 +66,7 @@ Do **not** serve `govuk-frontend.min.css` as the long-term stylesheet.
 | Sass pipeline           | `styles/application.scss` → `npm run build:styles` → `dist/stylesheets/application.css`                      |
 | Parity suite            | `uv run pytest tests/test_fixture_parity.py` — backend HTML ≡ every fixture `html`                           |
 | Coverage                | 100% functions / branches / statements (`pytest-cov`, `--cov-fail-under=100`)                                |
-| Deploy                  | Docker on Render.com free tier (`Dockerfile`, `render.yaml`)                                                 |
+| Deploy                  | Docker on Google Cloud Run (`Dockerfile`, `scripts/deploy-cloud-run.sh`)                                     |
 | Page template reference | https://design-system.service.gov.uk/styles/page-template/                                                   |
 | Fixture testing guide   | https://frontend.design-system.service.gov.uk/testing-your-html/                                             |
 
